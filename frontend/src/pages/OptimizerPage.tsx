@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ShieldAlert, ArrowRight, ShieldCheck, Settings, CheckCircle, Activity } from 'lucide-react';
+import { ShieldAlert, ArrowRight, ShieldCheck, Settings, CheckCircle, Activity, Play } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import { EmptyState } from '../components/EmptyState';
 import { HealthProfileModal } from '../components/HealthProfileModal';
@@ -131,9 +132,18 @@ const OptimizerPage = () => {
                     <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Estimated Drop</p>
                     <div className="text-6xl font-black text-green-500 tracking-tighter">-{strategy.expectedDrop}</div>
                     <p className="text-xs text-muted-foreground font-medium mt-1 mb-6">AQI Index Points</p>
-                    <a href="/simulator" className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95">
-                      Open in Simulator <ArrowRight size={16} />
-                    </a>
+                    <Link 
+                      to="/simulator" 
+                      state={{ 
+                        traffic: strategy.sliders?.traffic, 
+                        industry: strategy.sliders?.industry, 
+                        construction: strategy.sliders?.construction,
+                        autoRun: true
+                      }}
+                      className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                    >
+                      Open in Simulator <Play size={16} />
+                    </Link>
                   </div>
                 </div>
               </CardContent>
@@ -185,7 +195,7 @@ const OptimizerPage = () => {
                 <div className="p-2 bg-blue-500/20 rounded-lg">
                   <ShieldAlert size={20} className="text-blue-400" />
                 </div>
-                <h3 className="text-lg font-bold">Aether Intelligence</h3>
+                <h3 className="text-lg font-bold">Strategy Insight</h3>
               </div>
               <div className="space-y-4">
                 <p className="text-zinc-400 text-sm leading-relaxed">
@@ -228,7 +238,7 @@ const OptimizerPage = () => {
                 <CardTitle className="text-base flex items-center gap-2">
                    <Activity className="text-teal-400" size={18} /> Real-Time Signature
                 </CardTitle>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Chemical Breakdown</p>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Pollutant Breakdown</p>
               </CardHeader>
               <CardContent className="space-y-4">
                  <div className="space-y-1.5">
@@ -284,7 +294,7 @@ const OptimizerPage = () => {
               </div>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2 italic">
-                  <ShieldCheck className="text-primary" size={18} /> Neural Decision Weights
+                  <ShieldCheck className="text-primary" size={18} /> Pollution Impact Factors
                 </CardTitle>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Relative Feature Impact</p>
               </CardHeader>

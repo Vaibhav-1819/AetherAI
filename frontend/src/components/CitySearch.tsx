@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2, X } from 'lucide-react';
+import { API_BASE_URL } from '../lib/utils';
 
 interface City {
   name: string;
@@ -36,7 +37,7 @@ export const CitySearch: React.FC<CitySearchProps> = ({ onSelectCity, currentCit
       if (query.length >= 2) {
         setIsSearching(true);
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/search?q=${query}`);
+          const response = await fetch(`${API_BASE_URL}/api/search?q=${query}`);
           const data = await response.json();
           if (data.status === 'success') {
             setResults(data.data);
@@ -51,7 +52,7 @@ export const CitySearch: React.FC<CitySearchProps> = ({ onSelectCity, currentCit
         setResults([]);
         setIsOpen(false);
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [query]);

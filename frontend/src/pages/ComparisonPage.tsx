@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Activity, MapPin, Trash2, ArrowUpRight, ArrowDownRight, Layers, Construction, Car, Factory } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import { API_BASE_URL } from '../lib/utils';
+import { ShieldCheck, Heart, Globe, AlertCircle } from 'lucide-react';
 
 interface PinnedCity {
   name: string;
@@ -76,6 +77,52 @@ const ComparisonPage = () => {
         </div>
       </div>
 
+      {pinnedCities.length > 0 && (
+        <Card className="mb-10 bg-zinc-900 border-zinc-800 overflow-hidden">
+           <div className="grid grid-cols-1 lg:grid-cols-4">
+              <div className="p-8 border-r border-zinc-800 bg-zinc-900/50">
+                 <div className="flex items-center gap-2 mb-4">
+                    <Globe className="text-primary" size={20} />
+                    <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400">Global Context</h3>
+                 </div>
+                 <div className="space-y-6">
+                    <div>
+                       <p className="text-xs text-zinc-500 font-bold uppercase mb-1">Avg. Pinned AQI</p>
+                       <p className="text-4xl font-black text-white">
+                          {Math.round(Object.values(cityData).reduce((acc, curr) => acc + curr.current_aqi, 0) / (Object.values(cityData).length || 1))}
+                       </p>
+                    </div>
+                    <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl">
+                       <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Intelligence Insight</p>
+                       <p className="text-xs font-medium text-zinc-300 leading-relaxed">
+                          {pinnedCities.length > 1 ? `Comparison reveals a ${Math.max(...Object.values(cityData).map(d => d.current_aqi)) - Math.min(...Object.values(cityData).map(d => d.current_aqi))} point variance across your monitored zones.` : 'Add more cities to unlock cross-regional variance analysis.'}
+                       </p>
+                    </div>
+                 </div>
+              </div>
+              <div className="lg:col-span-3 p-8">
+                 <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-6">Relative Air Quality Index</h3>
+                 <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <BarChart data={pinnedCities.map(c => ({ name: c.name, aqi: cityData[c.name]?.current_aqi || 0 }))}>
+                          <XAxis dataKey="name" stroke="#52525b" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }}
+                            cursor={{ fill: '#27272a' }}
+                          />
+                          <Bar dataKey="aqi" radius={[8, 8, 0, 0]} barSize={40}>
+                             {pinnedCities.map((_, index) => (
+                               <Cell key={`cell-${index}`} fill={index === 0 ? '#3b82f6' : index === 1 ? '#f97316' : '#f59e0b'} />
+                             ))}
+                          </Bar>
+                       </BarChart>
+                    </ResponsiveContainer>
+                 </div>
+              </div>
+           </div>
+        </Card>
+      )}
+
       {pinnedCities.length === 0 ? (
         <Card className="border-dashed py-20 text-center bg-zinc-900/20">
           <CardContent>
@@ -140,9 +187,11 @@ const ComparisonPage = () => {
                         <div className="text-[10px] text-zinc-500 font-bold uppercase mb-1">NO2</div>
                         <div className="text-sm font-bold">{data.breakdown.no2}</div>
                       </div>
-                      <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
-                        <div className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Wind</div>
-                        <div className="text-sm font-bold">{data.weather_current?.wind_speed}km/h</div>
+                      <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50 flex flex-col items-center justify-center">
+                        <Heart size={14} className={data.current_aqi > 150 ? 'text-red-500' : 'text-teal-500'} />
+                        <div className="text-[10px] font-black uppercase mt-1">
+                          {data.current_aqi > 150 ? 'Risk' : 'Safe'}
+                        </div>
                       </div>
                     </div>
 

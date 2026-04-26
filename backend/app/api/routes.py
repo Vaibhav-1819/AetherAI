@@ -76,12 +76,12 @@ def get_predictions(lat: float = 28.61, lon: float = 77.20, db: Session = Depend
             f_pm25 = f.get('pm25', 0) or 0
             f_pm10 = f.get('pm10', 0) or 0
             
-            # Neural Source Weighting
-            ind_score = round((f_no2 * 0.4) + (f_pm25 * 0.6), 2) # Industrial base
-            tra_score = round((f_no2 * 1.2), 2)                  # Vehicular focus
-            con_score = round((f_pm10 * 1.5) / (f_pm25 or 1), 2) # Particulate ratio
+            # Source Weighting
+            ind_score = round((f_no2 * 0.4) + (f_pm25 * 0.6), 2) # Industrial
+            tra_score = round((f_no2 * 1.2), 2)                  # Traffic
+            con_score = round((f_pm10 * 1.5) / (f_pm25 or 1), 2) # Construction
             
-            # Normalize for a "Dominance" view (Stacked Area Chart compatible)
+            # Normalize for a "Dominance" view
             total = ind_score + tra_score + con_score or 1
             signature_trend.append({
                 "time": f.get('time', '').split("T")[-1][:5],
@@ -293,8 +293,9 @@ def simulate_scenario(req: SimulateRequest, lat: float = 28.61, lon: float = 77.
             weather_factor += 10 * scaling_factor
             weather_insight += " High humidity is slightly inhibiting dispersion."
 
-    weather_factor = max(-30.0, min(30.0, weather_factor))
-    final_aqi = max(0, result["new_aqi"] + weather_factor)
+    # Weather only slightly nudges the final result (e.g. +/- 5%)
+    weather_multiplier = 1.0 + (weather_factor / 200.0)
+    final_aqi = max(0, result["new_aqi"] * weather_multiplier)
     final_improvement = base_aqi - final_aqi
     
     return {
@@ -428,6 +429,28 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
         status_color = colors.orange
         status_label = "MODERATE / SENSITIVE"
     
+    # Helper for text wrapping
+    def draw_wrapped_text(canvas, text, x, y, max_width, font_name, font_size, line_spacing=12):
+        canvas.setFont(font_name, font_size)
+        words = text.split()
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = " ".join(current_line + [word])
+            if canvas.stringWidth(test_line, font_name, font_size) < max_width:
+                current_line.append(word)
+            else:
+                lines.append(" ".join(current_line))
+                current_line = [word]
+        lines.append(" ".join(current_line))
+        
+        curr_y = y
+        for line in lines:
+            canvas.drawString(x, curr_y, line)
+            curr_y -= line_spacing
+        return curr_y
+
     # 4. Header & Branding
     p.setFillColor(colors.HexColor("#18181b")) # Zinc-900 style
     p.rect(0, height - 1.5*inch, width, 1.5*inch, fill=1, stroke=0)
@@ -473,7 +496,7 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
     pollutants = [
         ("PM2.5", f"{live_aqi['pm2_5']} ug/m3", "Fine particulate matter from combustion/traffic."),
         ("PM10", f"{live_aqi['pm10']} ug/m3", "Coarser dust and construction debris."),
-        ("NO2", f"{live_aqi['nitrogen_dioxide']} ug/m3", "Nitrogen dioxide, primary indicator of vehicular exhaust.")
+        ("NO2", f"{live_aqi['nitrogen_dioxide']} ug/m3", "Nitrogen dioxide, vehicular exhaust indicator.")
     ]
     
     for name, val, desc in pollutants:
@@ -483,9 +506,9 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
         p.drawString(1.8*inch, y_pos, val)
         p.setFont("Helvetica-Oblique", 9)
         p.setFillColor(colors.grey)
-        p.drawString(3.0*inch, y_pos, desc)
+        y_pos = draw_wrapped_text(p, desc, 3.0*inch, y_pos, 4.0*inch, "Helvetica-Oblique", 9, 11)
         p.setFillColor(colors.black)
-        y_pos -= 0.25*inch
+        y_pos -= 0.1*inch
 
     # 8. Temporal Action Roadmap
     p.setFont("Helvetica-Bold", 14)
@@ -514,13 +537,18 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
 
     # 9. AI Strategic Summary
     p.setFillColor(colors.HexColor("#eff6ff")) # Light Blue
-    p.roundRect(0.8*inch, y_pos - 1.0*inch, width - 1.6*inch, 0.8*inch, 8, fill=1, stroke=0)
+    box_height = 0.8*inch
+    # Estimate height based on text length
+    if len(ai_narrative) > 120: box_height = 1.0*inch
+    
+    p.roundRect(0.8*inch, y_pos - box_height - 0.2*inch, width - 1.6*inch, box_height, 8, fill=1, stroke=0)
     
     p.setFillColor(colors.HexColor("#1e40af")) # Dark Blue
     p.setFont("Helvetica-Bold", 11)
-    p.drawString(1.0*inch, y_pos - 0.45*inch, "AETHER AI STRATEGIC SUMMARY")
-    p.setFont("Helvetica-Oblique", 10)
-    p.drawString(1.0*inch, y_pos - 0.75*inch, ai_narrative[:100] + ("..." if len(ai_narrative) > 100 else ""))
+    p.drawString(1.0*inch, y_pos - 0.5*inch, "AETHER AI STRATEGIC SUMMARY")
+    
+    y_narrative = y_pos - 0.75*inch
+    draw_wrapped_text(p, ai_narrative, 1.0*inch, y_narrative, width - 2.0*inch, "Helvetica-Oblique", 10, 12)
     
     # 10. Footer
     p.setFillColor(colors.grey)

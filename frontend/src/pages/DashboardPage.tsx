@@ -6,7 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { AlertTriangle, Info, Cloud, Droplets, Wind, Thermometer, User, Download, Pin, WifiOff } from 'lucide-react';
+import { Activity, AlertTriangle, Info, Cloud, Droplets, Wind, Thermometer, User, Download, Pin, WifiOff, Locate, Loader2 } from 'lucide-react';
 import { HealthProfileModal } from '../components/HealthProfileModal';
 
 import { CitySearch } from '../components/CitySearch';
@@ -39,6 +39,45 @@ const DashboardPage = () => {
 
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isLocating, setIsLocating] = useState(false);
+
+  // Auto-detect location on launch
+  useEffect(() => {
+    const detectLocation = () => {
+      if (navigator.geolocation) {
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude: lat, longitude: lon } = position.coords;
+            // Fetch city name from coordinates
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+              const data = await res.json();
+              const cityName = data.address.city || data.address.town || data.address.village || 'Current Location';
+              const newLoc = { name: cityName, lat, lon };
+              setLocation(newLoc);
+              localStorage.setItem('aetherai_location', JSON.stringify(newLoc));
+            } catch {
+              setLocation({ name: 'Current Location', lat, lon });
+            } finally {
+              setIsLocating(false);
+            }
+          },
+          (error) => {
+            console.warn("Geolocation denied or failed:", error);
+            setIsLocating(false);
+          },
+          { timeout: 10000 }
+        );
+      }
+    };
+
+    const saved = localStorage.getItem('aetherai_location');
+    // If no location saved, or if it's the default New Delhi, try to auto-locate
+    if (!saved || JSON.parse(saved).name === 'New Delhi') {
+      detectLocation();
+    }
+  }, []);
 
   useEffect(() => {
     const handleStatusChange = () => setIsOffline(!navigator.onLine);
@@ -136,111 +175,89 @@ const DashboardPage = () => {
   const isPoor = data.current_aqi > (isSensitive ? 80 : 150);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Status Banner */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 px-4 py-2 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-        <div className="flex items-center gap-2">
-          {isOffline ? (
-            <div className="flex items-center gap-2 text-orange-500">
-              <WifiOff size={12} /> Offline Mode - Viewing Cached Data
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-teal-500">
-              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Live System Connected
-            </div>
-          )}
-        </div>
-        <div>Last Updated: {lastUpdated}</div>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="container mx-auto px-4 py-12 space-y-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{location.name} Air Quality</h1>
-          <p className="text-muted-foreground mt-1">Real-time metrics and 72-hour AI forecast</p>
+          <div className="flex items-center gap-2 mb-2">
+             <div className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest rounded-md border border-primary/20">
+               Environmental Command
+             </div>
+             {isOffline && (
+               <div className="px-2 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-bold uppercase tracking-widest rounded-md border border-orange-500/20 flex items-center gap-1">
+                 <WifiOff size={10} /> Offline
+               </div>
+             )}
+          </div>
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">{location.name}</h1>
+            {isLocating && <Loader2 className="animate-spin text-primary" size={24} />}
+          </div>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-2 font-medium">Real-time metrics and 72-hour air quality forecast</p>
         </div>
-        <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+        
+        <div className="w-full md:w-auto flex flex-wrap gap-3">
           <button
             onClick={pinCity}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-800 transition-colors"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm active:scale-95"
           >
             <Pin size={16} /> Pin
           </button>
           <button
             onClick={() => window.open(`${API_BASE_URL}/api/report?lat=${location.lat}&lon=${location.lon}&city=${location.name}`)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-800 transition-colors"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm active:scale-95"
           >
-            <Download size={16} /> Report
+            <Download size={16} /> Download Report
           </button>
-          <CitySearch onSelectCity={handleSelectCity} currentCity={location.name} />
+          <div className="w-full md:w-72">
+            <CitySearch onSelectCity={handleSelectCity} currentCity={location.name} />
+          </div>
         </div>
       </div>
 
-      {isPoor && (
-        <div className="bg-amber-500/15 border border-amber-500/50 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-amber-900 dark:text-amber-200">
-          <div className="flex gap-4 items-start">
-            <AlertTriangle className="mt-0.5 shrink-0" size={20} />
-            <div>
-              <h4 className="font-semibold">{profile.conditions.length > 0 ? 'Personal Health Risk Detected' : 'Poor AQI Detected'}</h4>
-              <p className="text-sm mt-1">
-                {profile.conditions.includes('asthma') || profile.conditions.includes('copd') 
-                  ? 'As a respiratory patient, even moderate AQI is high risk. Remain indoors and use air purification.' 
-                  : `Recommended Action: ${data.current_aqi > 200 ? 'Avoid all outdoor activities.' : 'Reduce traffic by 30% and monitor industrial emissions.'}`}
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setIsProfileOpen(true)}
-            className="text-xs font-bold uppercase tracking-widest bg-amber-500/20 px-4 py-2 rounded-xl border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-          >
-            Adjust Profile
-          </button>
-        </div>
-      )}
-
-      <HealthProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="col-span-1 md:col-span-1 relative overflow-hidden">
-          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-red-500/10 text-red-500 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-red-500/20">
+      {/* Top Level Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <Card className="col-span-1 md:col-span-1 relative overflow-hidden bg-zinc-50 dark:bg-zinc-900/50 border-none shadow-none">
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-500/10 text-red-500 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-red-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Live Sensor
           </div>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground w-max">Current AQI</CardTitle>
+            <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Current AQI</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-5xl font-bold ${isPoor ? 'text-red-500' : 'text-amber-500'}`}><AnimatedNumber value={data.current_aqi} /></div>
-            <p className={`text-sm font-medium mt-2 ${isPoor ? 'text-red-700' : 'text-amber-700'}`}>
-              {isPoor ? 'Unhealthy' : 'Moderate / Sensitive'}
+            <div className={`text-6xl font-black tracking-tighter ${isPoor ? 'text-red-500' : 'text-teal-500'}`}><AnimatedNumber value={data.current_aqi} /></div>
+            <p className={`text-xs font-bold mt-4 px-2 py-1 rounded-md w-fit uppercase tracking-wider ${isPoor ? 'bg-red-500/10 text-red-500' : 'bg-teal-500/10 text-teal-500'}`}>
+              {isPoor ? 'Unhealthy Conditions' : 'Moderate Baseline'}
             </p>
           </CardContent>
         </Card>
 
         <Card className="col-span-1 md:col-span-2">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Info size={16} /> Pollutant Breakdown
+            <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <Info size={14} /> Pollutant Breakdown
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4">
+          <CardContent className="grid grid-cols-3 gap-6">
             <div>
-              <div className="text-2xl font-bold">{data.breakdown.pm25}</div>
-              <div className="text-sm text-muted-foreground">PM2.5 (µg/m³)</div>
-              <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                <div className="bg-red-500 h-full" style={{width: `${Math.min(100, data.breakdown.pm25)}%`}}></div>
+              <div className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{data.breakdown.pm25}</div>
+              <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">PM2.5 (µg/m³)</div>
+              <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                <div className="bg-red-500 h-full transition-all duration-1000" style={{width: `${Math.min(100, data.breakdown.pm25)}%`}}></div>
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold">{data.breakdown.pm10}</div>
-              <div className="text-sm text-muted-foreground">PM10 (µg/m³)</div>
-              <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full" style={{width: `${Math.min(100, data.breakdown.pm10 / 2)}%`}}></div>
+              <div className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{data.breakdown.pm10}</div>
+              <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">PM10 (µg/m³)</div>
+              <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                <div className="bg-orange-500 h-full transition-all duration-1000" style={{width: `${Math.min(100, data.breakdown.pm10 / 2)}%`}}></div>
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold">{data.breakdown.no2}</div>
-              <div className="text-sm text-muted-foreground">NO2 (ppb)</div>
-              <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                <div className="bg-green-500 h-full" style={{width: `${Math.min(100, data.breakdown.no2 * 2)}%`}}></div>
+              <div className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{data.breakdown.no2}</div>
+              <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">NO2 (ppb)</div>
+              <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                <div className="bg-blue-500 h-full transition-all duration-1000" style={{width: `${Math.min(100, data.breakdown.no2 * 2)}%`}}></div>
               </div>
             </div>
           </CardContent>
@@ -248,99 +265,155 @@ const DashboardPage = () => {
 
         <Card className="col-span-1 md:col-span-1">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-               <Cloud size={16} /> Live Weather
+            <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+               <Cloud size={14} /> Live Weather
             </CardTitle>
           </CardHeader>
           <CardContent>
              {prediction?.weather_current ? (
-               <div className="grid grid-cols-2 gap-4 mt-2">
-                 <div className="flex items-center gap-2 text-muted-foreground">
-                   <Thermometer size={20} className="text-orange-500" />
-                   <span className="font-bold text-foreground text-[15px]">{prediction.weather_current.temperature}&deg;</span>
+               <div className="grid grid-cols-2 gap-y-4 gap-x-2 mt-2">
+                 <div className="flex items-center gap-2">
+                   <div className="p-1.5 bg-orange-500/10 rounded-lg text-orange-500">
+                     <Thermometer size={14} />
+                   </div>
+                   <span className="font-black text-zinc-900 dark:text-zinc-50 text-sm">{prediction.weather_current.temperature}&deg;C</span>
                  </div>
-                 <div className="flex items-center gap-2 text-muted-foreground">
-                   <Droplets size={18} className="text-blue-500" />
-                   <span className="font-bold text-foreground text-[15px]">{prediction.weather_current.humidity}%</span>
+                 <div className="flex items-center gap-2">
+                   <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500">
+                     <Droplets size={14} />
+                   </div>
+                   <span className="font-black text-zinc-900 dark:text-zinc-50 text-sm">{prediction.weather_current.humidity}%</span>
                  </div>
-                 <div className="flex items-center gap-2 text-muted-foreground">
-                   <Wind size={18} className="text-teal-500" />
-                   <span className="font-bold text-foreground text-[15px]">{prediction.weather_current.wind_speed} <span className="text-[10px]">km/h</span></span>
+                 <div className="flex items-center gap-2">
+                   <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-500">
+                     <Wind size={14} />
+                   </div>
+                   <span className="font-black text-zinc-900 dark:text-zinc-50 text-sm">{prediction.weather_current.wind_speed} <span className="text-[10px]">km/h</span></span>
                  </div>
-                 <div className="flex items-center gap-2 text-muted-foreground">
-                   <Cloud size={18} className="text-gray-400" />
-                   <span className="font-bold text-foreground text-[15px]">{prediction.weather_current.precipitation} <span className="text-[10px]">mm</span></span>
+                 <div className="flex items-center gap-2">
+                   <div className="p-1.5 bg-zinc-500/10 rounded-lg text-zinc-500">
+                     <Cloud size={14} />
+                   </div>
+                   <span className="font-black text-zinc-900 dark:text-zinc-50 text-sm">{prediction.weather_current.precipitation} <span className="text-[10px]">mm</span></span>
                  </div>
                </div>
              ) : (
-                <div className="text-sm text-muted-foreground py-4 text-center font-medium bg-muted/30 rounded-lg">API Unreachable</div>
+                <div className="text-xs text-zinc-400 py-4 text-center font-bold bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">API UNREACHABLE</div>
              )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Horizontal Action Plan */}
+      {prediction?.action_timeline && (
+        <Card className="bg-zinc-900 border-zinc-800 text-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+               <div>
+                  <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                     <Activity size={14} className="text-primary" /> Forecasted Actions
+                  </CardTitle>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">24-Hour AI Scheduled Interventions</p>
+               </div>
+               <div className="px-3 py-1 bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest rounded-full border border-primary/30">
+                 Live Monitoring Active
+               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex overflow-x-auto pb-4 gap-6 scrollbar-hide no-scrollbar">
+              {prediction.action_timeline.map((item: any, i: number) => (
+                <div key={i} className="min-w-[240px] flex-shrink-0 relative group">
+                  {i < prediction.action_timeline.length - 1 && (
+                    <div className="absolute top-[26px] right-[-12px] w-[24px] h-px bg-zinc-800 hidden md:block" />
+                  )}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-black text-primary">
+                      {item.time}
+                    </div>
+                    <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                      item.impact === 'High' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
+                    }`}>
+                      {item.impact}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-zinc-800/50 border border-zinc-800 rounded-2xl group-hover:bg-zinc-800 transition-colors">
+                    <h5 className="text-sm font-bold text-zinc-100 mb-1">{item.action}</h5>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{item.sector} Strategy</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader>
-            <CardTitle>AQI History (Last 24h)</CardTitle>
+            <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest">AQI History (Last 24h)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="w-full mt-4">
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={320}>
                 <AreaChart data={data.history}>
                   <defs>
                     <linearGradient id="colorAqi" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-zinc-800" />
+                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: '700' }}
                   />
-                  <Area type="monotone" dataKey="aqi" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorAqi)" strokeWidth={3} />
+                  <Area type="monotone" dataKey="aqi" stroke="#3b82f6" fillOpacity={1} fill="url(#colorAqi)" strokeWidth={4} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1">
+        <Card className="col-span-1 bg-zinc-50 dark:bg-zinc-900/50 border-none">
           <CardHeader>
             <div className="flex justify-between items-start">
-              <CardTitle>72h Forecast</CardTitle>
-              <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium dark:bg-green-900/30 dark:text-green-400 tracking-wide">
-                Prediction Confidence: {prediction.confidence_score}%
+              <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-widest">72h Forecast</CardTitle>
+              <div className="bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 text-[8px] px-2 py-1 rounded-full font-black tracking-widest uppercase">
+                CONFIDENCE: {prediction.confidence_score}%
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div className="border-l-2 border-primary pl-4 text-sm font-medium text-muted-foreground">
-                <span className="text-primary font-bold">Decision Intel:</span> {prediction.trend_insight}
+            <div className="space-y-8">
+              <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">AQI Summary</span>
+                <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50 leading-relaxed">{prediction.trend_insight}</p>
               </div>
 
               {prediction.activity_recommendation && (
-                <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-center gap-3">
-                  <div className="bg-primary rounded-lg p-2 text-primary-foreground">
-                    <Wind size={16} />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                    <Wind size={20} />
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-primary/70">AI Recommendation</p>
-                    <p className="text-sm font-bold">{prediction.activity_recommendation}</p>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Activity Advice</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">{prediction.activity_recommendation}</p>
                   </div>
                 </div>
               )}
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {prediction.forecast.map((item: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center bg-muted/50 p-3 rounded-xl border border-border">
-                    <span className="font-medium text-muted-foreground">{item.time}</span>
-                    <span className={`font-bold ${item.expected_aqi > 150 ? 'text-red-500' : item.expected_aqi > 100 ? 'text-amber-500' : 'text-green-500'}`}>
-                      {item.expected_aqi} AQI
-                    </span>
+                  <div key={i} className="flex justify-between items-center p-3 hover:bg-white dark:hover:bg-zinc-900 rounded-xl transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800 group">
+                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{item.time}</span>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${item.expected_aqi > 150 ? 'bg-red-500' : item.expected_aqi > 100 ? 'bg-orange-500' : 'bg-teal-500'}`} />
+                      <span className={`text-sm font-black tabular-nums ${item.expected_aqi > 150 ? 'text-red-500' : item.expected_aqi > 100 ? 'text-orange-500' : 'text-teal-500'}`}>
+                        {item.expected_aqi} AQI
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -349,6 +422,29 @@ const DashboardPage = () => {
         </Card>
       </div>
 
+      {isPoor && (
+        <div className="bg-red-500 text-white rounded-signature p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl shadow-red-500/20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="flex gap-6 items-start">
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <h4 className="text-xl font-black uppercase tracking-tight">{profile.conditions.length > 0 ? 'Health Guardian Alert' : 'Critical Atmosphere Detected'}</h4>
+              <p className="text-sm font-medium mt-1 opacity-90 max-w-xl">
+                {profile.conditions.includes('asthma') || profile.conditions.includes('copd') 
+                   ? 'Critical Risk: Your respiratory profile indicates severe vulnerability at current levels. Emergency indoor protocols advised.' 
+                   : `Recommended Action: ${data.current_aqi > 200 ? 'Cease all outdoor activities immediately. Activate high-efficiency air filtration.' : 'Industrial throttle initiated. Public transport encouraged.'}`}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsProfileOpen(true)}
+            className="w-full md:w-auto text-xs font-black uppercase tracking-widest bg-white dark:bg-zinc-900 text-red-500 px-8 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
+          >
+            Update Profile
+          </button>
+        </div>
+      )}
     </div>
   );
 };

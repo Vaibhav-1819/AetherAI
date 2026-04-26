@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Slider } from '../components/ui/slider';
@@ -20,10 +21,20 @@ const SimulationLabPage = () => {
   const [strategyA, setStrategyA] = useState<any>(null);
   const [strategyB, setStrategyB] = useState<any>(null);
   const [weatherInsight, setWeatherInsight] = useState("");
+  const locationState = useLocation().state;
   const [location] = useState(() => {
     const saved = localStorage.getItem('aetherai_location');
     return saved ? JSON.parse(saved) : { name: 'New Delhi', lat: 28.61, lon: 77.20 };
   });
+
+  // Apply state from Optimizer if available
+  useEffect(() => {
+    if (locationState) {
+      if (locationState.traffic !== undefined) setTraffic([locationState.traffic]);
+      if (locationState.industry !== undefined) setIndustry([locationState.industry]);
+      if (locationState.construction !== undefined) setConstruction([locationState.construction]);
+    }
+  }, [locationState]);
 
   // Fetch initial base AQI
   useEffect(() => {
@@ -84,7 +95,7 @@ const SimulationLabPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <h1 className="text-3xl font-bold tracking-tight mb-2">Simulation Lab: {location.name}</h1>
+      <h1 className="text-3xl font-bold tracking-tight mb-2">AQI Simulator: {location.name}</h1>
       <p className="text-muted-foreground mb-8">Adjust control parameters to see real-time impact on City AQI.</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
