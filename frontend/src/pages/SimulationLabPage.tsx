@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Slider } from '../components/ui/slider';
 import { AnimatedNumber } from '../components/ui/animated-number';
 import { EmptyState } from '../components/EmptyState';
-import { Activity, Car, Factory, HardHat, RefreshCw, RotateCcw, Cloud } from 'lucide-react';
+import { Activity, Car, Factory, HardHat, RefreshCw, RotateCcw, Leaf, Zap, Cloud } from 'lucide-react';
 import { API_BASE_URL } from '../lib/utils';
 
 const SimulationLabPage = () => {
   const [traffic, setTraffic] = useState([0]);
   const [industry, setIndustry] = useState([0]);
   const [construction, setConstruction] = useState([0]);
+  const [greenery, setGreenery] = useState([0]);
+  const [energy, setEnergy] = useState([0]);
   
   const [baseAqi, setBaseAqi] = useState(0);
   const [newAqi, setNewAqi] = useState(0);
@@ -33,6 +35,8 @@ const SimulationLabPage = () => {
       if (locationState.traffic !== undefined) setTraffic([locationState.traffic]);
       if (locationState.industry !== undefined) setIndustry([locationState.industry]);
       if (locationState.construction !== undefined) setConstruction([locationState.construction]);
+      if (locationState.greenery !== undefined) setGreenery([locationState.greenery]);
+      if (locationState.energy !== undefined) setEnergy([locationState.energy]);
     }
   }, [locationState]);
 
@@ -66,7 +70,9 @@ const SimulationLabPage = () => {
         body: JSON.stringify({
           traffic: traffic[0],
           industry: industry[0],
-          construction: construction[0]
+          construction: construction[0],
+          greenery: greenery[0],
+          energy: energy[0]
         })
       })
       .then(res => res.json())
@@ -79,12 +85,14 @@ const SimulationLabPage = () => {
     }, 400); // debounce API calls
     
     return () => clearTimeout(timeout);
-  }, [traffic, industry, construction, baseAqi]);
+  }, [traffic, industry, construction, greenery, energy, baseAqi]);
 
-  const applyPreset = (t: number, i: number, c: number) => {
+  const applyPreset = (t: number, i: number, c: number, g: number = 0, e: number = 0) => {
     setTraffic([t]);
     setIndustry([i]);
     setConstruction([c]);
+    setGreenery([g]);
+    setEnergy([e]);
   };
 
   const aqiColor = newAqi > 200 ? 'text-red-500' : newAqi > 100 ? 'text-amber-500' : 'text-green-500';
@@ -135,6 +143,26 @@ const SimulationLabPage = () => {
                   <span className="font-bold">{construction[0]}%</span>
                 </div>
                 <Slider value={construction} onValueChange={setConstruction} max={100} step={1} />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Leaf className="text-green-500" size={20} /> Urban Greenery
+                  </div>
+                  <span className="font-bold">{greenery[0]}%</span>
+                </div>
+                <Slider value={greenery} onValueChange={setGreenery} max={100} step={1} />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Zap className="text-yellow-500" size={20} /> Renewable Shift
+                  </div>
+                  <span className="font-bold">{energy[0]}%</span>
+                </div>
+                <Slider value={energy} onValueChange={setEnergy} max={100} step={1} />
               </div>
 
             </CardContent>

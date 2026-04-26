@@ -49,6 +49,11 @@ def get_historical_data(lat: float = 28.61, lon: float = 77.20, db: Session = De
                 "pm10": round(live_aqi["pm10"], 1),
                 "no2": round(live_aqi["nitrogen_dioxide"], 1)
             },
+            "health_impact": {
+                "asthma_risk": "High" if live_aqi["pm2_5"] > 50 else "Moderate" if live_aqi["pm2_5"] > 25 else "Low",
+                "cardio_risk": "Elevated" if live_aqi["european_aqi"] > 100 else "Normal",
+                "outdoor_safe": "No" if live_aqi["european_aqi"] > 150 else "With Precautions" if live_aqi["european_aqi"] > 100 else "Yes"
+            },
             "history": sparse_history
         }
     }
@@ -211,7 +216,9 @@ def get_optimization(lat: float = 28.61, lon: float = 77.20, db: Session = Depen
         for i in [0, 20, 40, 60, 80]:
             for c in [0, 20, 40, 60, 80]:
                 res = calculate_optimizations(base_aqi, t, i, c)
-                final_aqi = max(0, res["new_aqi"] + weather_factor)
+                # Sync with simulate logic: multiplicative multiplier
+                wm = 1.0 + (weather_factor / 100.0)
+                final_aqi = max(0, res["new_aqi"] * wm)
                 drop = base_aqi - final_aqi
                 
                 # Penalty for economic disruption
@@ -242,7 +249,7 @@ def get_optimization(lat: float = 28.61, lon: float = 77.20, db: Session = Depen
                     "name": f"AetherAI Neural Strategy: {primary_source} Focus",
                     "type": "Neural Optimizer v2",
                     "effectiveness": best_label,
-                    "expectedDrop": round(base_aqi - max(0, calculate_optimizations(base_aqi, best_t, best_i, best_c)["new_aqi"] + weather_factor)),
+                    "expectedDrop": round(base_aqi - max(0, calculate_optimizations(base_aqi, best_t, best_i, best_c)["new_aqi"] * (1.0 + (weather_factor / 100.0)))),
                     "sliders": {"traffic": best_t, "industry": best_i, "construction": best_c},
                     "details": [
                         f"{best_t}% Traffic Reduction",
@@ -260,6 +267,8 @@ class SimulateRequest(BaseModel):
     traffic: float
     industry: float
     construction: float
+    greenery: float = 0
+    energy: float = 0
 
 @router.post("/simulate")
 def simulate_scenario(req: SimulateRequest, lat: float = 28.61, lon: float = 77.20, db: Session = Depends(get_db)):
@@ -267,7 +276,14 @@ def simulate_scenario(req: SimulateRequest, lat: float = 28.61, lon: float = 77.
     base_aqi = live_aqi["european_aqi"]
     
     # Base simulation from original logic
-    result = calculate_optimizations(base_aqi, req.traffic, req.industry, req.construction)
+    result = calculate_optimizations(
+        base_aqi, 
+        req.traffic, 
+        req.industry, 
+        req.construction, 
+        req.greenery, 
+        req.energy
+    )
     
     # Weather Extension Physical Factor (Adding penalty or benefit)
     weather = get_current_weather(lat, lon)
@@ -382,7 +398,7 @@ def ask_aether(req: ChatRequest):
         return {"status": "success", "message": fallback + " (Note: Connect GEMINI_API_KEY for full conversational intelligence.)"}
 
 @router.get("/report")
-def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Delhi"):
+def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Delhi", mode: str = "detailed"):
     # 1. Fetch comprehensive data
     live_aqi = get_live_aqi(lat, lon)
     weather = get_current_weather(lat, lon)
@@ -459,7 +475,7 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
     p.setFont("Helvetica-Bold", 28)
     p.drawString(0.8*inch, height - 0.8*inch, "Aether")
     p.setFillColor(colors.HexColor("#3b82f6")) # Primary Blue
-    p.drawString(1.75*inch, height - 0.8*inch, "AI")
+    p.drawString(1.8*inch, height - 0.8*inch, "AI")
     
     p.setFillColor(colors.white)
     p.setFont("Helvetica", 10)
@@ -499,41 +515,65 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
         ("NO2", f"{live_aqi['nitrogen_dioxide']} ug/m3", "Nitrogen dioxide, vehicular exhaust indicator.")
     ]
     
-    for name, val, desc in pollutants:
-        p.setFont("Helvetica-Bold", 11)
-        p.drawString(1.0*inch, y_pos, name)
-        p.setFont("Helvetica", 11)
-        p.drawString(1.8*inch, y_pos, val)
-        p.setFont("Helvetica-Oblique", 9)
-        p.setFillColor(colors.grey)
-        y_pos = draw_wrapped_text(p, desc, 3.0*inch, y_pos, 4.0*inch, "Helvetica-Oblique", 9, 11)
+    if mode == "detailed":
+        for name, val, desc in pollutants:
+            p.setFont("Helvetica-Bold", 11)
+            p.drawString(1.0*inch, y_pos, name)
+            p.setFont("Helvetica", 11)
+            p.drawString(1.8*inch, y_pos, val)
+            p.setFont("Helvetica-Oblique", 9)
+            p.setFillColor(colors.grey)
+            y_pos = draw_wrapped_text(p, desc, 3.0*inch, y_pos, 4.0*inch, "Helvetica-Oblique", 9, 11)
+            p.setFillColor(colors.black)
+            y_pos -= 0.1*inch
+    else:
+        y_pos -= 0.2*inch
+        p.setFont("Helvetica-Oblique", 10)
+        p.drawString(1.0*inch, y_pos, "Technical pollutant metrics condensed for Executive Summary.")
+        y_pos -= 0.3*inch
+
+    # New Section: Strategic Recommendations
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(0.8*inch, y_pos - 0.4*inch, "PERSONALIZED RECOMMENDATIONS")
+    y_pos -= 0.8*inch
+
+    recs = [
+        "Hydration: Increase fluid intake to assist metabolic clearance of inhaled particulates.",
+        "Activity: " + ("Cease all high-intensity outdoor exercise." if aqi_val > 150 else "Safe for outdoor activities with caution." if aqi_val > 100 else "Ideal conditions for outdoor activity."),
+        "Infrastructure: " + ("Activate HEPA filtration systems in all living spaces." if aqi_val > 100 else "Natural ventilation is recommended.")
+    ]
+
+    for rec in recs:
+        p.setFillColor(colors.HexColor("#3b82f6"))
+        p.circle(1.0*inch, y_pos + 0.05*inch, 2, fill=1, stroke=0)
         p.setFillColor(colors.black)
+        y_pos = draw_wrapped_text(p, rec, 1.2*inch, y_pos, width - 2.0*inch, "Helvetica", 10, 12)
         y_pos -= 0.1*inch
 
-    # 8. Temporal Action Roadmap
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(0.8*inch, y_pos - 0.4*inch, "TEMPORAL INTERVENTION ROADMAP")
-    y_pos -= 0.8*inch
-    
-    for action in action_timeline:
-        # Draw timeline dot
-        p.setFillColor(colors.HexColor("#3b82f6"))
-        p.circle(1.0*inch, y_pos + 0.05*inch, 3, fill=1, stroke=0)
-        p.setFillColor(colors.black)
+    if mode == "detailed":
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(0.8*inch, y_pos - 0.4*inch, "TEMPORAL INTERVENTION ROADMAP")
+        y_pos -= 0.8*inch
         
-        p.setFont("Helvetica-Bold", 10)
-        p.drawString(1.2*inch, y_pos, action["time"])
-        p.setFont("Helvetica", 10)
-        p.drawString(1.8*inch, y_pos, f"{action['action']} ({action['sector']})")
-        
-        # Impact Badge
-        impact_color = colors.red if action["impact"] == "High" else colors.blue
-        p.setFillColor(impact_color)
-        p.setFont("Helvetica-Bold", 8)
-        p.drawString(width - 1.8*inch, y_pos, f"{action['impact'].upper()} IMPACT")
-        p.setFillColor(colors.black)
-        
-        y_pos -= 0.3*inch
+        for action in action_timeline:
+            # Draw timeline dot
+            p.setFillColor(colors.HexColor("#3b82f6"))
+            p.circle(1.0*inch, y_pos + 0.05*inch, 3, fill=1, stroke=0)
+            p.setFillColor(colors.black)
+            
+            p.setFont("Helvetica-Bold", 10)
+            p.drawString(1.2*inch, y_pos, action["time"])
+            p.setFont("Helvetica", 10)
+            p.drawString(1.8*inch, y_pos, f"{action['action']} ({action['sector']})")
+            
+            # Impact Badge
+            impact_color = colors.red if action["impact"] == "High" else colors.blue
+            p.setFillColor(impact_color)
+            p.setFont("Helvetica-Bold", 8)
+            p.drawString(width - 1.8*inch, y_pos, f"{action['impact'].upper()} IMPACT")
+            p.setFillColor(colors.black)
+            
+            y_pos -= 0.3*inch
 
     # 9. AI Strategic Summary
     p.setFillColor(colors.HexColor("#eff6ff")) # Light Blue

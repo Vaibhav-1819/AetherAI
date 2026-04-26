@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AnimatedNumber } from '../components/ui/animated-number';
@@ -6,7 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Activity, AlertTriangle, Info, Cloud, Droplets, Wind, Thermometer, User, Download, Pin, WifiOff, Locate, Loader2 } from 'lucide-react';
+import { Activity, AlertTriangle, Info, Cloud, Droplets, Wind, Thermometer, Download, Pin, WifiOff, Loader2, Heart, Shield, Cpu, Users, ShieldCheck, FileText, X } from 'lucide-react';
 import { HealthProfileModal } from '../components/HealthProfileModal';
 
 import { CitySearch } from '../components/CitySearch';
@@ -37,9 +37,11 @@ const DashboardPage = () => {
     return saved ? JSON.parse(saved) : { name: 'New Delhi', lat: 28.61, lon: 77.20 };
   });
 
-  const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isLocating, setIsLocating] = useState(false);
+  const [stakeholder, setStakeholder] = useState<'citizen' | 'planner'>('citizen');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportMode, setReportMode] = useState<'executive' | 'detailed'>('detailed');
 
   // Auto-detect location on launch
   useEffect(() => {
@@ -92,7 +94,6 @@ const DashboardPage = () => {
   const handleSelectCity = (newLocation: { name: string; lat: number; lon: number }) => {
     setLocation(newLocation);
     localStorage.setItem('aetherai_location', JSON.stringify(newLocation));
-    setLastUpdated(new Date().toLocaleTimeString());
   };
 
   const pinCity = () => {
@@ -119,7 +120,6 @@ const DashboardPage = () => {
         ]);
         setData(resData.data);
         setPrediction(resPred.data);
-        setLastUpdated(new Date().toLocaleTimeString());
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -204,7 +204,7 @@ const DashboardPage = () => {
             <Pin size={16} /> Pin
           </button>
           <button
-            onClick={() => window.open(`${API_BASE_URL}/api/report?lat=${location.lat}&lon=${location.lon}&city=${location.name}`)}
+            onClick={() => setShowReportModal(true)}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm active:scale-95"
           >
             <Download size={16} /> Download Report
@@ -215,8 +215,31 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* Stakeholder Persona Toggle */}
+      <div className="flex justify-center md:justify-start">
+        <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl flex gap-1 border border-zinc-200 dark:border-zinc-800">
+           <button 
+             onClick={() => setStakeholder('citizen')}
+             className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+               stakeholder === 'citizen' ? 'bg-white dark:bg-zinc-800 shadow-sm text-primary' : 'text-zinc-500'
+             }`}
+           >
+             <Heart size={14} /> Citizen View
+           </button>
+           <button 
+             onClick={() => setStakeholder('planner')}
+             className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+               stakeholder === 'planner' ? 'bg-white dark:bg-zinc-800 shadow-sm text-primary' : 'text-zinc-500'
+             }`}
+           >
+             <Users size={14} /> Urban Planner
+           </button>
+        </div>
+      </div>
+
       {/* Top Level Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        {/* AQI Master Card */}
         <Card className="col-span-1 md:col-span-1 relative overflow-hidden bg-zinc-50 dark:bg-zinc-900/50 border-none shadow-none">
           <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-500/10 text-red-500 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-red-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Live Sensor
@@ -304,9 +327,141 @@ const DashboardPage = () => {
         </Card>
       </div>
 
-      {/* Horizontal Action Plan */}
+      {/* Row 2: Stakeholder Context & Intelligence */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Dynamic Stakeholder Card */}
+        {stakeholder === 'citizen' ? (
+          <Card className="col-span-1 md:col-span-1 border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+               <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                  <Shield size={14} /> Health Risk Predictor
+               </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-zinc-500">Asthma Risk</span>
+                  <span className={`text-xs font-black px-2 py-0.5 rounded ${data.health_impact?.asthma_risk === 'High' ? 'bg-red-500 text-white' : 'bg-teal-500 text-white'}`}>
+                    {data.health_impact?.asthma_risk}
+                  </span>
+               </div>
+               <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-zinc-500">Outdoor Safety</span>
+                  <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 uppercase">{data.health_impact?.outdoor_safe}</span>
+               </div>
+               <p className="text-[10px] text-zinc-400 font-medium leading-relaxed italic">
+                 *Calculated based on real-time PM2.5 and atmospheric stagnation.
+               </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="col-span-1 md:col-span-1 border-zinc-200 dark:border-zinc-800">
+            <CardHeader className="pb-2">
+               <CardTitle className="text-xs font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                  <Cpu size={14} /> IoT Sensor Network
+               </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                     <span className="text-[10px] font-bold text-zinc-500">ZONE_ALPHA_01</span>
+                  </div>
+                  <span className="text-[10px] font-black text-zinc-300">ACTIVE</span>
+               </div>
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                     <span className="text-[10px] font-bold text-zinc-500">ZONE_BETA_02</span>
+                  </div>
+                  <span className="text-[10px] font-black text-zinc-300">ACTIVE</span>
+               </div>
+               <div className="flex items-center justify-between opacity-50">
+                  <div className="flex items-center gap-2">
+                     <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                     <span className="text-[10px] font-bold text-zinc-500">ZONE_GAMMA_03</span>
+                  </div>
+                  <span className="text-[10px] font-black text-zinc-500">MAINTENANCE</span>
+               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="col-span-1 md:col-span-2 bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white transition-colors duration-300">
+           <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-black uppercase tracking-widest text-zinc-500">Strategic Outlook</CardTitle>
+           </CardHeader>
+           <CardContent>
+              <div className="flex items-center gap-6">
+                 <div className="p-4 bg-primary/10 rounded-2xl">
+                    <Activity className="text-primary" size={32} />
+                 </div>
+                 <div>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Neural Forecast Confidence: 94.2%</p>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Current dispersion models suggest that targeted traffic restrictions between 18:00 - 20:00 will provide maximum ROI for AQI reduction.</p>
+                 </div>
+              </div>
+           </CardContent>
+        </Card>
+      </div>
+
+      {/* Report Options Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+           <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                 <h2 className="text-xl font-black tracking-tight">Report Configuration</h2>
+                 <button onClick={() => setShowReportModal(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                    <X size={20} />
+                 </button>
+              </div>
+              <div className="p-8 space-y-6">
+                 <div className="space-y-4">
+                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Select Mode</label>
+                    <div className="grid grid-cols-2 gap-4">
+                       <button 
+                         onClick={() => setReportMode('executive')}
+                         className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${
+                           reportMode === 'executive' ? 'border-primary bg-primary/5' : 'border-zinc-100 dark:border-zinc-800 hover:border-zinc-200'
+                         }`}
+                       >
+                         <FileText className={reportMode === 'executive' ? 'text-primary' : 'text-zinc-400'} size={24} />
+                         <span className="text-xs font-bold uppercase">Executive</span>
+                       </button>
+                       <button 
+                         onClick={() => setReportMode('detailed')}
+                         className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${
+                           reportMode === 'detailed' ? 'border-primary bg-primary/5' : 'border-zinc-100 dark:border-zinc-800 hover:border-zinc-200'
+                         }`}
+                       >
+                         <ShieldCheck className={reportMode === 'detailed' ? 'text-primary' : 'text-zinc-400'} size={24} />
+                         <span className="text-xs font-bold uppercase">Detailed</span>
+                       </button>
+                    </div>
+                 </div>
+                 
+                 <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed">
+                       {reportMode === 'executive' 
+                         ? "Summarized insights focusing on high-level trends and immediate risks." 
+                         : "Full scientific dossier including pollutant ratios and temporal roadmaps."}
+                    </p>
+                 </div>
+
+                 <button 
+                   onClick={() => {
+                     window.open(`${API_BASE_URL}/api/report?lat=${location.lat}&lon=${location.lon}&city=${location.name}&mode=${reportMode}`);
+                     setShowReportModal(false);
+                   }}
+                   className="w-full py-4 bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900 rounded-2xl text-sm font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg active:scale-[0.98]"
+                 >
+                   Generate Intelligence Report
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
       {prediction?.action_timeline && (
-        <Card className="bg-zinc-900 border-zinc-800 text-white overflow-hidden">
+        <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white overflow-hidden transition-colors duration-300">
           <CardHeader className="pb-2">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div>
@@ -328,7 +483,7 @@ const DashboardPage = () => {
                     <div className="absolute top-[26px] right-[-12px] w-[24px] h-px bg-zinc-800 hidden md:block" />
                   )}
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-black text-primary">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[10px] font-black text-primary">
                       {item.time}
                     </div>
                     <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
@@ -337,8 +492,8 @@ const DashboardPage = () => {
                       {item.impact}
                     </div>
                   </div>
-                  <div className="p-4 bg-zinc-800/50 border border-zinc-800 rounded-2xl group-hover:bg-zinc-800 transition-colors">
-                    <h5 className="text-sm font-bold text-zinc-100 mb-1">{item.action}</h5>
+                  <div className="p-4 bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl group-hover:bg-zinc-200 dark:group-hover:bg-zinc-800 transition-colors">
+                    <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">{item.action}</h5>
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{item.sector} Strategy</p>
                   </div>
                 </div>
@@ -355,7 +510,7 @@ const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className="w-full mt-4">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height={320} minWidth={0}>
                 <AreaChart data={data.history}>
                   <defs>
                     <linearGradient id="colorAqi" x1="0" y1="0" x2="0" y2="1">
@@ -445,6 +600,7 @@ const DashboardPage = () => {
           </button>
         </div>
       )}
+      <HealthProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 };

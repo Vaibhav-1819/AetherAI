@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight, Leaf, Activity, ShieldCheck, Globe, ChevronRight, Play, Wind, BarChart } from 'lucide-react';
+import { Activity, ChevronRight, Play, Wind, BarChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -65,10 +65,10 @@ const LandingPage = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="py-24 px-4 bg-zinc-50 dark:bg-zinc-900/30">
+      <section className="py-24 px-4 bg-zinc-50 dark:bg-zinc-900/10 border-y border-zinc-100 dark:border-zinc-800/50">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 features-grid">
-            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 transition-all">
+            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-all shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-none hover:-translate-y-1">
               <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 mb-6">
                 <Wind size={24} />
               </div>
@@ -76,7 +76,7 @@ const LandingPage = () => {
               <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Access real-time AQI data and detailed pollutant breakdowns for over 10,000 cities worldwide.</p>
             </div>
 
-            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 transition-all">
+            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-all shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-none hover:-translate-y-1">
               <div className="w-12 h-12 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-500 mb-6">
                 <BarChart size={24} />
               </div>
@@ -84,7 +84,7 @@ const LandingPage = () => {
               <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">View 72-hour air quality predictions to plan your outdoor activities and public health responses.</p>
             </div>
 
-            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 transition-all">
+            <div className="feature-card p-8 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-all shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-none hover:-translate-y-1">
               <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-500 mb-6">
                 <Activity size={24} />
               </div>
@@ -95,17 +95,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-zinc-100 dark:border-zinc-900">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6 text-zinc-500 text-xs font-bold uppercase tracking-widest">
-           <div>AetherAI &copy; 2026. All rights reserved.</div>
-           <div className="flex gap-8">
-              <a href="#" className="hover:text-blue-500 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-blue-500 transition-colors">Terms</a>
-              <a href="#" className="hover:text-blue-500 transition-colors">Documentation</a>
-           </div>
-        </div>
-      </footer>
     </div>
   );
 };

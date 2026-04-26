@@ -1,8 +1,10 @@
-def calculate_optimizations(base_aqi: float, traffic_reduction: float, industry_reduction: float, construction_reduction: float):
+def calculate_optimizations(base_aqi: float, traffic: float, industry: float, construction: float, greenery: float = 0, energy: float = 0):
     # Weighted Impact Model
-    impact_percentage = (0.5 * traffic_reduction) + (0.3 * industry_reduction) + (0.2 * construction_reduction)
+    # Traffic (30%), Industry (20%), Construction (10%), Greenery (20%), Energy (20%)
+    impact_percentage = (0.3 * traffic) + (0.2 * industry) + (0.1 * construction) + (0.2 * greenery) + (0.2 * energy)
     
-    max_possible_drop = base_aqi * 0.60
+    # Maximum possible improvement is 70% of base AQI
+    max_possible_drop = base_aqi * 0.70
     
     expected_reduction = max_possible_drop * (impact_percentage / 100.0)
     new_aqi = max(0, base_aqi - expected_reduction)

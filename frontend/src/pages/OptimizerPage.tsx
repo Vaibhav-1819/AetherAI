@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { ShieldAlert, ArrowRight, ShieldCheck, Settings, CheckCircle, Activity, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { EmptyState } from '../components/EmptyState';
-import { HealthProfileModal } from '../components/HealthProfileModal';
 import { API_BASE_URL } from '../lib/utils';
 
 const OptimizerPage = () => {
@@ -15,7 +14,6 @@ const OptimizerPage = () => {
   const [loading, setLoading] = useState(true);
   const [precautions, setPrecautions] = useState<string[]>([]);
   const [weatherInsight, setWeatherInsight] = useState<string>("");
-  const [primarySource, setPrimarySource] = useState<string>("");
   const [signature, setSignature] = useState<any>(null);
   const [signatureTrend, setSignatureTrend] = useState<any[]>([]);
   const [actionTimeline, setActionTimeline] = useState<any[]>([]);
@@ -32,7 +30,6 @@ const OptimizerPage = () => {
     ]).then(([optData, predData]) => {
       setStrategies(optData.data.strategies);
       setWeatherInsight(optData.data.weather_insight);
-      setPrimarySource(optData.data.primary_source);
       setSignature(optData.data.chemical_signature);
       if (predData.data.signature_trend) {
         setSignatureTrend(predData.data.signature_trend);
@@ -138,6 +135,8 @@ const OptimizerPage = () => {
                         traffic: strategy.sliders?.traffic, 
                         industry: strategy.sliders?.industry, 
                         construction: strategy.sliders?.construction,
+                        greenery: 0,
+                        energy: 0,
                         autoRun: true
                       }}
                       className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
@@ -160,7 +159,7 @@ const OptimizerPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[280px] min-h-[280px] w-full mt-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <AreaChart data={signatureTrend} stackOffset="expand">
                       <XAxis dataKey="time" fontSize={10} axisLine={false} tickLine={false} interval={2} stroke="#52525b" />
                       <YAxis hide />
@@ -174,9 +173,9 @@ const OptimizerPage = () => {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 flex justify-between gap-2 px-2">
-                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[10px] text-zinc-400 font-bold uppercase">Traffic</span></div>
-                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[10px] text-zinc-400 font-bold uppercase">Industry</span></div>
-                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[10px] text-zinc-400 font-bold uppercase">Urban</span></div>
+                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Traffic</span></div>
+                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Industry</span></div>
+                   <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Urban</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -184,7 +183,7 @@ const OptimizerPage = () => {
         </div>
 
         <div className="space-y-6">
-          <Card className="bg-zinc-900 border-zinc-800 text-zinc-100 overflow-hidden relative">
+          <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 overflow-hidden relative transition-colors duration-300">
             <div className="absolute top-0 right-0 p-3">
                <div className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-blue-500/20">
                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Intelligence Active
@@ -198,14 +197,14 @@ const OptimizerPage = () => {
                 <h3 className="text-lg font-bold">Strategy Insight</h3>
               </div>
               <div className="space-y-4">
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  Our neural optimization engine has analyzed <span className="text-white font-medium">{location.name}'s</span> current atmospheric context.
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+                  Our neural optimization engine has analyzed <span className="text-zinc-900 dark:text-white font-medium">{location.name}'s</span> current atmospheric context.
                 </p>
-                <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-sm italic text-zinc-300">
+                <div className="p-3 bg-zinc-100 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm italic text-zinc-700 dark:text-zinc-300">
                   "{weatherInsight || "Atmospheric conditions are stable, focusing on chemical pollutant signatures."}"
                 </div>
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  Strategy priority is currently driven by <span className="text-white font-medium">{featureImportance[0]?.name || "particulate matter"}</span> concentrations, which accounts for <span className="text-white font-medium">{featureImportance[0]?.value || "45"}%</span> of the predicted AQI spike.
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+                  Strategy priority is currently driven by <span className="text-zinc-900 dark:text-white font-medium">{featureImportance[0]?.name || "particulate matter"}</span> concentrations, which accounts for <span className="text-zinc-900 dark:text-white font-medium">{featureImportance[0]?.value || "45"}%</span> of the predicted AQI spike.
                 </p>
               </div>
             </CardContent>
@@ -233,7 +232,7 @@ const OptimizerPage = () => {
           </Card>
 
           {signature && (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 transition-colors duration-300">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                    <Activity className="text-teal-400" size={18} /> Real-Time Signature
@@ -243,10 +242,10 @@ const OptimizerPage = () => {
               <CardContent className="space-y-4">
                  <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                       <span className="text-zinc-400">Industrial</span>
-                       <span className="text-zinc-100">{signature.industrial}</span>
+                       <span className="text-zinc-500 dark:text-zinc-400">Industrial</span>
+                       <span className="text-zinc-900 dark:text-zinc-100">{signature.industrial}</span>
                     </div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                        <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.min(100, signature.industrial * 20)}%` }}
@@ -256,10 +255,10 @@ const OptimizerPage = () => {
                  </div>
                  <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                       <span className="text-zinc-400">Vehicular</span>
-                       <span className="text-zinc-100">{signature.traffic}</span>
+                       <span className="text-zinc-500 dark:text-zinc-400">Vehicular</span>
+                       <span className="text-zinc-900 dark:text-zinc-100">{signature.traffic}</span>
                     </div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                        <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.min(100, signature.traffic * 20)}%` }}
@@ -269,10 +268,10 @@ const OptimizerPage = () => {
                  </div>
                  <div className="space-y-1.5">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
-                       <span className="text-zinc-400">Particulate</span>
-                       <span className="text-zinc-100">{signature.construction}</span>
+                       <span className="text-zinc-500 dark:text-zinc-400">Particulate</span>
+                       <span className="text-zinc-900 dark:text-zinc-100">{signature.construction}</span>
                     </div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                        <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.min(100, signature.construction * 20)}%` }}
@@ -288,7 +287,7 @@ const OptimizerPage = () => {
           )}
 
           {featureImportance.length > 0 && (
-            <Card className="bg-zinc-900 border-zinc-800 overflow-hidden relative">
+            <Card className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 overflow-hidden relative transition-colors duration-300">
               <div className="absolute top-0 right-0 p-4 opacity-10">
                  <ShieldCheck size={80} />
               </div>
@@ -305,7 +304,7 @@ const OptimizerPage = () => {
                          <span className="text-xs font-bold text-zinc-300">{f.name}</span>
                          <span className="text-[10px] font-bold text-primary tabular-nums">{f.value}%</span>
                       </div>
-                      <div className="h-2 bg-zinc-800/50 rounded-full overflow-hidden border border-white/5">
+                      <div className="h-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden border border-zinc-200 dark:border-white/5">
                          <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${f.value}%` }}
@@ -332,14 +331,14 @@ const OptimizerPage = () => {
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">24-Hour AI Scheduled Interventions</p>
               </CardHeader>
               <CardContent>
-                 <div className="relative border-l border-zinc-800 ml-2 space-y-6 pb-2">
+                 <div className="relative border-l border-zinc-200 dark:border-zinc-800 ml-2 space-y-6 pb-2">
                     {actionTimeline.map((item, i) => (
                        <div key={i} className="relative pl-6">
                           <div className="absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" />
                           <div className="flex justify-between items-start">
                              <div>
                                 <span className="text-[10px] font-bold text-zinc-500 tabular-nums">{item.time}</span>
-                                <h5 className="text-xs font-bold text-zinc-200 mt-0.5">{item.action}</h5>
+                                <h5 className="text-xs font-bold text-zinc-900 dark:text-zinc-200 mt-0.5">{item.action}</h5>
                                 <p className="text-[10px] text-zinc-500 mt-1">{item.sector} Strategy</p>
                              </div>
                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
