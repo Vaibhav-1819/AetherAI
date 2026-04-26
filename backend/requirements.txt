@@ -1,0 +1,12 @@
+fastapi[standard]
+sqlalchemy
+pydantic
+scikit-learn
+xgboost
+pandas
+numpy
+alembic
+pytest
+google-generativeai
+python-dotenv
+reportlab
