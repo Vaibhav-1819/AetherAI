@@ -17,11 +17,11 @@ import pandas as pd
 import os
 from pydantic import BaseModel
 import requests
-import google.generativeai as genai
-from dotenv import load_dotenv
+from google import genai
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+load_dotenv(find_dotenv())
+genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -124,9 +124,11 @@ def get_predictions(lat: float = 28.61, lon: float = 77.20, db: Session = Depend
         if raw_forecast:
             day_forecast = raw_forecast[:24]
             best_hour_idx = day_forecast.index(min(day_forecast, key=lambda x: x['aqi']))
-            
-        best_time = f"+{best_hour_idx}h"
-        activity_advice = f"Optimal window for outdoor activity: {best_time} (AQI: {round(raw_forecast[best_hour_idx]['aqi'] if raw_forecast else base_aqi_val)})"
+            best_time = f"+{best_hour_idx}h"
+            activity_advice = f"Optimal window for outdoor activity: {best_time} (AQI: {round(raw_forecast[best_hour_idx]['aqi'])})"
+        else:
+            best_time = "+0h"
+            activity_advice = f"Optimal window for outdoor activity: {best_time} (AQI: {round(base_aqi_val)})"
         
         # 🛡️ Dynamic Precautions
         precautions = []
@@ -382,8 +384,7 @@ def ask_aether(req: ChatRequest):
     """
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        chat = model.start_chat(history=[])
+        chat = genai_client.chats.create(model='gemini-2.5-flash')
         response = chat.send_message(f"System Context: {context}\n\nUser Question: {req.message}")
         
         return {"status": "success", "message": response.text}
@@ -416,7 +417,6 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
     ai_narrative = "Air quality remains within safe thresholds. No immediate strategic intervention required."
     if os.getenv("GEMINI_API_KEY"):
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
             prompt = f"""
             Generate a 2-sentence executive summary for an environmental report.
             City: {city}, AQI: {live_aqi['european_aqi']}, Primary Pollutant: PM2.5 at {live_aqi['pm2_5']}ug/m3.
@@ -424,7 +424,7 @@ def generate_report(lat: float = 28.61, lon: float = 77.20, city: str = "New Del
             Forecast Trend: {forecast_markers[0]['expected_aqi']} AQI in 24h.
             Tone: Professional, authoritative, scientific.
             """
-            response = model.generate_content(prompt)
+            response = genai_client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
             ai_narrative = response.text.strip()
         except Exception as e:
             logger.error(f"AI Report Narrative failed: {e}")
